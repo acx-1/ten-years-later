@@ -1,19 +1,32 @@
 import { useState, useCallback } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Navbar } from "@/components/Navbar";
 import { HeroSection } from "@/sections/HeroSection";
 import { TimelineNav } from "@/sections/TimelineNav";
 import { useImagePreloader } from "@/hooks/useImagePreloader";
 import { useAuth } from "@/hooks/useAuth";
 
+const bubbleRoutes: Record<number, string> = {
+  6: "/dashboard",
+  7: "/dashboard",
+  8: "/explore",
+  9: "/explore",
+  10: "/dreams",
+};
+
 export default function Home() {
   const [activePanel, setActivePanel] = useState(5);
   const isLoaded = useImagePreloader("/images/bg-hero.jpg");
   const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
 
   const handlePanelChange = useCallback((id: number) => {
+    if (id >= 6 && isAuthenticated && bubbleRoutes[id]) {
+      navigate(bubbleRoutes[id]);
+      return;
+    }
     setActivePanel(id);
-  }, []);
+  }, [isAuthenticated, navigate]);
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-gray-900">

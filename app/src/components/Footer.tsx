@@ -44,9 +44,9 @@ export function Footer() {
             <h4 className="text-white font-semibold mb-4">关于</h4>
             <ul className="space-y-2">
               <li><Link to="/about" className="text-sm hover:text-[#1abc9c] transition-colors no-underline text-white/70">关于我们</Link></li>
-              <li><span className="text-sm">使用条款</span></li>
-              <li><span className="text-sm">隐私政策</span></li>
-              <li><span className="text-sm">联系我们</span></li>
+              <li><span className="text-sm text-white/30 cursor-default" title="即将上线">使用条款</span></li>
+              <li><span className="text-sm text-white/30 cursor-default" title="即将上线">隐私政策</span></li>
+              <li><span className="text-sm text-white/30 cursor-default" title="即将上线">联系我们</span></li>
             </ul>
           </div>
         </div>

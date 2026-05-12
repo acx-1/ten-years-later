@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import gsap from "gsap";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/providers/trpc";
 
 const teamStory = [
@@ -21,6 +22,7 @@ const values = [
 ];
 
 export default function About() {
+  const { isAuthenticated } = useAuth();
   const { data: stats } = trpc.explore.stats.useQuery();
   const pageRef = useRef<HTMLDivElement>(null);
 
@@ -130,10 +132,19 @@ export default function About() {
 
       <section className="py-16">
         <div className="max-w-[1200px] mx-auto px-6 text-center animate-in">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">准备好开始了吗？</h2>
-          <p className="text-gray-600 mb-6">十年后，你会成为怎样的人？从今天开始记录你的答案。</p>
-          <Link to="/login" className="inline-block px-8 py-3 bg-[#1abc9c] text-white rounded-lg font-medium hover:bg-[#16a085] transition-colors no-underline shadow-lg">
-            立即开始
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">
+            {isAuthenticated ? "继续你的旅程" : "准备好开始了吗？"}
+          </h2>
+          <p className="text-gray-600 mb-6">
+            {isAuthenticated
+              ? "每一个记录都是通往未来的脚印。"
+              : "十年后，你会成为怎样的人？从今天开始记录你的答案。"}
+          </p>
+          <Link
+            to={isAuthenticated ? "/dashboard" : "/login"}
+            className="inline-block px-8 py-3 bg-[#1abc9c] text-white rounded-lg font-medium hover:bg-[#16a085] transition-colors no-underline shadow-lg"
+          >
+            {isAuthenticated ? "开始记录" : "立即开始"}
           </Link>
         </div>
       </section>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/providers/trpc";
@@ -19,22 +19,27 @@ function Logo() {
 }
 
 export default function Login() {
+  const navigate = useNavigate();
   const [isRegister, setIsRegister] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState("");
 
+  const utils = trpc.useUtils();
+
   const loginMutation = trpc.localAuth.login.useMutation({
-    onSuccess: () => {
-      window.location.href = "/";
+    onSuccess: async () => {
+      await utils.invalidate();
+      navigate("/dashboard");
     },
     onError: (err) => setError(err.message),
   });
 
   const registerMutation = trpc.localAuth.register.useMutation({
-    onSuccess: () => {
-      window.location.href = "/";
+    onSuccess: async () => {
+      await utils.invalidate();
+      navigate("/dashboard");
     },
     onError: (err) => setError(err.message),
   });

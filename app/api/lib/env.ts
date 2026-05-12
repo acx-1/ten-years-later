@@ -14,6 +14,6 @@ export const env = {
   isProduction: process.env.NODE_ENV === "production",
   databaseUrl: required("DATABASE_URL"),
   kimiAuthUrl: process.env.KIMI_AUTH_URL || process.env.VITE_KIMI_AUTH_URL || "https://auth.kimi.com",
-    kimiOpenUrl: process.env.KIMI_OPEN_URL || "https://open.kimi.com",
+  kimiOpenUrl: process.env.KIMI_OPEN_URL || "https://open.kimi.com",
   ownerUnionId: process.env.OWNER_UNION_ID ?? "",
 };

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router";
 import gsap from "gsap";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
@@ -6,17 +7,28 @@ import { trpc } from "@/providers/trpc";
 
 const categories = ["全部", "创业", "旅行", "学习", "艺术", "健康", "科技", "生活"];
 
+function useQueryParam(key: string): string {
+  const location = useLocation();
+  return new URLSearchParams(location.search).get(key) || "";
+}
+
 export default function Explore() {
+  const urlQuery = useQueryParam("q");
   const [activeCategory, setActiveCategory] = useState("全部");
+  const [searchQuery, setSearchQuery] = useState(urlQuery);
   const pageRef = useRef<HTMLDivElement>(null);
 
   const { data: feed } = trpc.explore.feed.useQuery();
+  const { data: searchResults } = trpc.explore.search.useQuery(
+    { query: searchQuery.trim() },
+    { enabled: searchQuery.trim().length > 0 }
+  );
   const { data: recentLogs } = trpc.explore.recentLogs.useQuery();
   const { data: stats } = trpc.explore.stats.useQuery();
 
-  const filteredDreams = feed?.filter((d) =>
-    activeCategory === "全部" || d.category === activeCategory
-  ) || [];
+  const isSearching = searchQuery.trim().length > 0;
+  const feedList = feed || [];
+  const searchList = searchResults || [];
 
   useEffect(() => {
     if (pageRef.current) {
@@ -49,6 +61,34 @@ export default function Explore() {
       </div>
 
       <div className="max-w-[1200px] mx-auto px-6 mt-6">
+        {/* Search Bar */}
+        <div className="bg-white rounded-lg shadow-md p-4 flex items-center gap-3 mb-6 animate-in">
+          <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && searchQuery.trim()) {
+                // Search is auto-triggered by React Query
+              }
+            }}
+            placeholder="搜索梦想、用户或主题..."
+            className="flex-1 text-sm outline-none bg-transparent"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="text-xs text-gray-400 hover:text-gray-600 cursor-pointer bg-transparent border-none"
+            >
+              清除
+            </button>
+          )}
+        </div>
+
+        {/* Categories */}
         <div className="flex gap-2 flex-wrap mb-8 animate-in">
           {categories.map((cat) => (
             <button key={cat} onClick={() => setActiveCategory(cat)}
@@ -65,29 +105,58 @@ export default function Explore() {
           <div>
             <h2 className="text-lg font-semibold text-gray-800 mb-4 animate-in">最新梦想</h2>
             <div className="space-y-4">
-              {filteredDreams.map((dream) => (
-                <div key={dream.id} className="bg-white rounded-lg p-5 shadow-sm hover:shadow-md transition-all duration-200 animate-in">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-9 h-9 rounded-full bg-[#1abc9c]/10 flex items-center justify-center text-[#1abc9c] font-bold text-xs">
-                      {(dream.userName || "?")[0]}
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-800 text-sm">{dream.userName || "匿名"}</h3>
-                      <span className="text-xs text-gray-400">{new Date(dream.createdAt).toLocaleDateString("zh-CN")}</span>
-                    </div>
-                    <span className="ml-auto px-2 py-0.5 bg-[#1abc9c]/10 text-[#1abc9c] text-xs rounded-full">{dream.category}</span>
-                  </div>
-                  <h4 className="font-medium text-gray-800">{dream.title}</h4>
-                  <p className="text-sm text-gray-500 mt-1">{dream.description}</p>
-                  <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full transition-all duration-1000"
-                      style={{ width: `${dream.progress}%`, backgroundColor: dream.color || "#1abc9c" }} />
-                  </div>
-                  <span className="text-xs text-gray-400 mt-1">{dream.progress}%</span>
-                </div>
-              ))}
-              {filteredDreams.length === 0 && (
+              {isSearching
+                ? searchList
+                    .filter((d) => activeCategory === "全部" || d.category === activeCategory)
+                    .map((dream) => (
+                      <div key={dream.id} className="bg-white rounded-lg p-5 shadow-sm hover:shadow-md transition-all duration-200 animate-in">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="w-9 h-9 rounded-full bg-[#1abc9c]/10 flex items-center justify-center text-[#1abc9c] font-bold text-xs">
+                            ?
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-gray-800 text-sm">匿名用户</h3>
+                            <span className="text-xs text-gray-400">{new Date(dream.createdAt).toLocaleDateString("zh-CN")}</span>
+                          </div>
+                          <span className="ml-auto px-2 py-0.5 bg-[#1abc9c]/10 text-[#1abc9c] text-xs rounded-full">{dream.category}</span>
+                        </div>
+                        <h4 className="font-medium text-gray-800">{dream.title}</h4>
+                        <p className="text-sm text-gray-500 mt-1">{dream.description}</p>
+                        <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full transition-all duration-1000"
+                            style={{ width: `${dream.progress}%`, backgroundColor: dream.color || "#1abc9c" }} />
+                        </div>
+                        <span className="text-xs text-gray-400 mt-1">{dream.progress}%</span>
+                      </div>
+                    ))
+                : feedList
+                    .filter((d) => activeCategory === "全部" || d.category === activeCategory)
+                    .map((dream) => (
+                      <div key={dream.id} className="bg-white rounded-lg p-5 shadow-sm hover:shadow-md transition-all duration-200 animate-in">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="w-9 h-9 rounded-full bg-[#1abc9c]/10 flex items-center justify-center text-[#1abc9c] font-bold text-xs">
+                            {(dream.userName || "?")[0]}
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-gray-800 text-sm">{dream.userName || "匿名"}</h3>
+                            <span className="text-xs text-gray-400">{new Date(dream.createdAt).toLocaleDateString("zh-CN")}</span>
+                          </div>
+                          <span className="ml-auto px-2 py-0.5 bg-[#1abc9c]/10 text-[#1abc9c] text-xs rounded-full">{dream.category}</span>
+                        </div>
+                        <h4 className="font-medium text-gray-800">{dream.title}</h4>
+                        <p className="text-sm text-gray-500 mt-1">{dream.description}</p>
+                        <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full transition-all duration-1000"
+                            style={{ width: `${dream.progress}%`, backgroundColor: dream.color || "#1abc9c" }} />
+                        </div>
+                        <span className="text-xs text-gray-400 mt-1">{dream.progress}%</span>
+                      </div>
+                    ))}
+              {feedList.length === 0 && !isSearching && (
                 <p className="text-gray-400 text-sm text-center py-8">暂无数据</p>
+              )}
+              {isSearching && searchList.length === 0 && (
+                <p className="text-gray-400 text-sm text-center py-8">未找到匹配的梦想</p>
               )}
             </div>
           </div>

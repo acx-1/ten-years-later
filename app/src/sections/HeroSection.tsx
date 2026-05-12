@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import gsap from "gsap";
 import { LoginForm } from "@/components/LoginForm";
 import { ContentPanel } from "@/components/ContentPanel";
@@ -13,8 +13,10 @@ interface HeroSectionProps {
 }
 
 export function HeroSection({ activePanel, onPanelChange, isLoaded, isAuthenticated }: HeroSectionProps) {
+  const navigate = useNavigate();
   const [displayPanel, setDisplayPanel] = useState(activePanel);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const heroRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -149,12 +151,24 @@ export function HeroSection({ activePanel, onPanelChange, isLoaded, isAuthentica
                   <div className="relative w-[280px]">
                     <input
                       type="text"
-                      placeholder="搜索你的梦想"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && searchQuery.trim()) {
+                          navigate(`/explore?q=${encodeURIComponent(searchQuery.trim())}`);
+                        }
+                      }}
+                      placeholder="搜索你的梦想，按回车开始"
                       className="w-full h-10 pl-4 pr-10 text-sm bg-white/90 rounded border-none focus:outline-none focus:ring-2 focus:ring-[#1abc9c]/50"
                     />
-                    <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#999]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
+                    <button
+                      onClick={() => searchQuery.trim() && navigate(`/explore?q=${encodeURIComponent(searchQuery.trim())}`)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 bg-transparent border-none cursor-pointer"
+                    >
+                      <svg className="w-5 h-5 text-[#999] hover:text-[#1abc9c] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </button>
                   </div>
                 )}
               </div>

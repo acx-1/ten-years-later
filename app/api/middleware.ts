@@ -10,31 +10,34 @@ const t = initTRPC.context<TrpcContext>().create({
 export const createRouter = t.router;
 export const publicQuery = t.procedure;
 
+// Unified auth middleware - checks both OAuth (ctx.user) and local (ctx.unifiedUser)
 const requireAuth = t.middleware(async (opts) => {
   const { ctx, next } = opts;
 
-  if (!ctx.user) {
+  // Check unified user first (supports both OAuth and local auth)
+  if (!ctx.unifiedUser && !ctx.user) {
     throw new TRPCError({
       code: "UNAUTHORIZED",
       message: ErrorMessages.unauthenticated,
     });
   }
 
-  return next({ ctx: { ...ctx, user: ctx.user } });
+  return next({ ctx });
 });
 
 function requireRole(role: string) {
   return t.middleware(async (opts) => {
     const { ctx, next } = opts;
 
-    if (!ctx.user || ctx.user.role !== role) {
+    const userRole = ctx.unifiedUser?.role ?? ctx.user?.role;
+    if (!userRole || userRole !== role) {
       throw new TRPCError({
         code: "FORBIDDEN",
         message: ErrorMessages.insufficientRole,
       });
     }
 
-    return next({ ctx: { ...ctx, user: ctx.user } });
+    return next({ ctx });
   });
 }
 

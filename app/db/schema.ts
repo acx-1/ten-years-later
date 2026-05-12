@@ -1,17 +1,16 @@
 import {
   mysqlTable,
-  serial,
+  bigint,
   varchar,
   text,
   timestamp,
-  bigint,
   int,
   mysqlEnum,
 } from "drizzle-orm/mysql-core";
 
 // OAuth users (Kimi login)
 export const users = mysqlTable("users", {
-  id: serial("id").primaryKey(),
+  id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
   unionId: varchar("unionId", { length: 255 }).notNull().unique(),
   name: varchar("name", { length: 255 }),
   email: varchar("email", { length: 320 }),
@@ -27,7 +26,7 @@ export type InsertUser = typeof users.$inferInsert;
 
 // Local users (username/password login)
 export const localUsers = mysqlTable("local_users", {
-  id: serial("id").primaryKey(),
+  id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
   username: varchar("username", { length: 50 }).notNull().unique(),
   displayName: varchar("display_name", { length: 255 }),
   passwordHash: varchar("password_hash", { length: 255 }).notNull(),
@@ -43,7 +42,7 @@ export type InsertLocalUser = typeof localUsers.$inferInsert;
 
 // Dreams table
 export const dreams = mysqlTable("dreams", {
-  id: serial("id").primaryKey(),
+  id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
   userId: bigint("user_id", { mode: "number", unsigned: true }).notNull(),
   userType: mysqlEnum("user_type", ["oauth", "local"]).default("local").notNull(),
   title: varchar("title", { length: 255 }).notNull(),
@@ -61,7 +60,7 @@ export type Dream = typeof dreams.$inferSelect;
 
 // Dream logs (journal entries)
 export const dreamLogs = mysqlTable("dream_logs", {
-  id: serial("id").primaryKey(),
+  id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
   dreamId: bigint("dream_id", { mode: "number", unsigned: true }).notNull(),
   userId: bigint("user_id", { mode: "number", unsigned: true }).notNull(),
   userType: mysqlEnum("user_type", ["oauth", "local"]).default("local").notNull(),

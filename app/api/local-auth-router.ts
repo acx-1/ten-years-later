@@ -10,7 +10,14 @@ import { Session } from "@contracts/constants";
 import { getSessionCookieOptions } from "./lib/cookies";
 import { TRPCError } from "@trpc/server";
 
-const JWT_SECRET = new TextEncoder().encode(process.env.APP_SECRET || "ten-years-later-secret-key-2026");
+const rawSecret = process.env.APP_SECRET;
+if (!rawSecret) {
+  throw new Error(
+    "APP_SECRET environment variable is required. " +
+    "Please set it in your .env file before starting the server."
+  );
+}
+const JWT_SECRET = new TextEncoder().encode(rawSecret);
 
 async function createToken(userId: number, username: string): Promise<string> {
   return new jose.SignJWT({ userId, username, type: "local" })

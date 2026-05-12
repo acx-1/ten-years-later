@@ -1,42 +1,44 @@
 import { z } from "zod";
-import { desc, sql } from "drizzle-orm";
+import { desc, sql, like, or, eq } from "drizzle-orm";
 import { createRouter, publicQuery } from "./middleware";
 import { getDb } from "./queries/connection";
 import { dreams, dreamLogs, localUsers } from "@db/schema";
 
+// Shared fields to select from dreams
+const dreamFields = {
+  id: dreams.id,
+  title: dreams.title,
+  description: dreams.description,
+  category: dreams.category,
+  progress: dreams.progress,
+  color: dreams.color,
+  deadline: dreams.deadline,
+  isPublic: dreams.isPublic,
+  createdAt: dreams.createdAt,
+};
+
 export const exploreRouter = createRouter({
-  // Get public dreams feed
+  // Get public dreams feed with user names (single JOIN query, no N+1)
   feed: publicQuery.query(async () => {
     const db = getDb();
-    const allDreams = await db
-      .select()
+    const results = await db
+      .select({
+        ...dreamFields,
+        userName: localUsers.displayName,
+      })
       .from(dreams)
-      .where(sql`${dreams.isPublic} = 1`)
+      .leftJoin(localUsers, eq(dreams.userId, localUsers.id))
+      .where(eq(dreams.isPublic, 1))
       .orderBy(desc(dreams.createdAt))
       .limit(20);
 
-    // Get user info for each dream
-    const enriched = await Promise.all(
-      allDreams.map(async (dream) => {
-        let userName = "匿名用户";
-        if (dream.userType === "local") {
-          const users = await db
-            .select()
-            .from(localUsers)
-            .where(sql`${localUsers.id} = ${dream.userId}`)
-            .limit(1);
-          if (users.length > 0) {
-            userName = users[0].displayName || users[0].username;
-          }
-        }
-        return { ...dream, userName };
-      })
-    );
-
-    return enriched;
+    return results.map((r) => ({
+      ...r,
+      userName: r.userName || "匿名用户",
+    }));
   }),
 
-  // Get recent log entries for feed
+  // Get recent log entries with user names and dream titles (optimized)
   recentLogs: publicQuery.query(async () => {
     const db = getDb();
     const logs = await db
@@ -45,44 +47,47 @@ export const exploreRouter = createRouter({
       .orderBy(desc(dreamLogs.createdAt))
       .limit(20);
 
-    const enriched = await Promise.all(
-      logs.map(async (log) => {
-        let userName = "匿名用户";
-        if (log.userType === "local") {
-          const users = await db
-            .select()
-            .from(localUsers)
-            .where(sql`${localUsers.id} = ${log.userId}`)
-            .limit(1);
-          if (users.length > 0) {
-            userName = users[0].displayName || users[0].username;
-          }
-        }
+    // Batch fetch user names and dream titles
+    const userIds = [...new Set(logs.map((l) => l.userId))];
+    const dreamIds = [...new Set(logs.map((l) => l.dreamId))];
 
-        // Get dream title
-        const dreamData = await db
-          .select()
-          .from(dreams)
-          .where(sql`${dreams.id} = ${log.dreamId}`)
-          .limit(1);
-        const dreamTitle = dreamData.length > 0 ? dreamData[0].title : "未知梦想";
+    // Fetch all users in one query
+    const usersList = userIds.length > 0
+      ? await db.select().from(localUsers).where(sql`${localUsers.id} IN (${userIds.join(",")})`)
+      : [];
+    const userMap = new Map(usersList.map((u) => [u.id, u.displayName || u.username]));
 
-        return { ...log, userName, dreamTitle };
-      })
-    );
+    // Fetch all dreams in one query
+    const dreamsList = dreamIds.length > 0
+      ? await db.select().from(dreams).where(sql`${dreams.id} IN (${dreamIds.join(",")})`)
+      : [];
+    const dreamMap = new Map(dreamsList.map((d) => [d.id, d.title]));
 
-    return enriched;
+    return logs.map((log) => ({
+      ...log,
+      userName: userMap.get(log.userId) || "匿名用户",
+      dreamTitle: dreamMap.get(log.dreamId) || "未知梦想",
+    }));
   }),
 
-  // Search dreams
+  // Search dreams using Drizzle's type-safe like()
   search: publicQuery
     .input(z.object({ query: z.string().min(1) }))
     .query(async ({ input }) => {
       const db = getDb();
       return db
-        .select()
+        .select({
+          ...dreamFields,
+          userName: localUsers.displayName,
+        })
         .from(dreams)
-        .where(sql`(${dreams.title} LIKE ${`%${input.query}%`} OR ${dreams.description} LIKE ${`%${input.query}%`}) AND ${dreams.isPublic} = 1`)
+        .leftJoin(localUsers, eq(dreams.userId, localUsers.id))
+        .where(
+          or(
+            like(dreams.title, `%${input.query}%`),
+            like(dreams.description, `%${input.query}%`)
+          )
+        )
         .orderBy(desc(dreams.createdAt))
         .limit(20);
     }),
