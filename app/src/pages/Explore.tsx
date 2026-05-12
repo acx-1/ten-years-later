@@ -252,6 +252,7 @@ function LikeButton({ logId, likes }: { logId: number; likes: number }) {
       utils.like.check.invalidate({ logId });
       utils.explore.recentLogs.invalidate();
     },
+    onError: (err) => toast.error(err.message),
   });
 
   const isLiked = likeStatus?.liked ?? false;

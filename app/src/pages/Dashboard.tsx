@@ -57,13 +57,7 @@ export default function Dashboard() {
 
   const createDream = trpc.dream.create.useMutation({
     onSuccess: () => refetchDreams(),
-  });
-
-  const toggleLike = trpc.like.toggle.useMutation({
-    onSuccess: () => {
-      refetchLogs();
-      utils.like.check.invalidate();
-    },
+    onError: (err) => toast.error(err.message),
   });
 
   // Set default selected dream when dreams load
@@ -356,6 +350,7 @@ function LikeButton({ logId, likes }: { logId: number; likes: number }) {
       utils.like.check.invalidate({ logId });
       utils.log.listByUser.invalidate();
     },
+    onError: (err) => toast.error(err.message),
   });
 
   const isLiked = likeStatus?.liked ?? false;
