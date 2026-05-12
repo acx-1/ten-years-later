@@ -13,7 +13,11 @@ export default function Dreams() {
   const [newTitle, setNewTitle] = useState("");
   const [newDesc, setNewDesc] = useState("");
   const [newCategory, setNewCategory] = useState("学习");
-  const [newDeadline, setNewDeadline] = useState("");
+  const [newDeadline, setNewDeadline] = useState(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() + 6);
+    return d.toISOString().slice(0, 7);
+  });
   const [newColor, setNewColor] = useState("#1abc9c");
   const pageRef = useRef<HTMLDivElement>(null);
 
@@ -153,7 +157,7 @@ export default function Dreams() {
                         <p className="text-sm text-gray-500 mt-0.5">{dream.description}</p>
                         <div className="flex items-center gap-2 mt-2">
                           <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">{dream.category}</span>
-                          <span className="text-xs text-gray-400">截止: {dream.deadline}</span>
+                          {dream.deadline && <span className="text-xs text-gray-400">截止: {dream.deadline}</span>}
                         </div>
                       </div>
                     </div>

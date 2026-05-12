@@ -35,14 +35,19 @@ export const dreamRouter = createRouter({
     )
     .mutation(async ({ input }) => {
       const db = getDb();
+      // Normalize empty strings to undefined
+      const deadline = input.deadline?.trim() || undefined;
+      const category = input.category?.trim() || undefined;
+      const description = input.description?.trim() || undefined;
+      const color = input.color?.trim() || "#1abc9c";
       const result = await db.insert(dreams).values({
         userId: input.userId,
         userType: input.userType,
-        title: input.title,
-        description: input.description,
-        category: input.category,
-        deadline: input.deadline,
-        color: input.color,
+        title: input.title.trim(),
+        description,
+        category,
+        deadline,
+        color,
       });
       return { id: Number(result[0].insertId), success: true };
     }),

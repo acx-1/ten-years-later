@@ -151,7 +151,7 @@ export default function Dashboard() {
                       <p className="text-sm text-gray-500 mt-0.5">{dream.description}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">{dream.category}</span>
-                        <span className="text-xs text-gray-400">截止: {dream.deadline}</span>
+                        {dream.deadline && <span className="text-xs text-gray-400">截止: {dream.deadline}</span>}
                       </div>
                     </div>
                   </div>
