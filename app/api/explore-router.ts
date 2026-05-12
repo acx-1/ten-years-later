@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { desc, sql, like, or, eq } from "drizzle-orm";
+import { desc, sql, like, or, and, eq } from "drizzle-orm";
 import { createRouter, publicQuery } from "./middleware";
 import { getDb } from "./queries/connection";
 import { dreams, dreamLogs, localUsers } from "@db/schema";
@@ -76,7 +76,7 @@ export const exploreRouter = createRouter({
     .input(z.object({ query: z.string().min(1) }))
     .query(async ({ input }) => {
       const db = getDb();
-      return db
+      const results = await db
         .select({
           ...dreamFields,
           userName: localUsers.displayName,
@@ -84,13 +84,21 @@ export const exploreRouter = createRouter({
         .from(dreams)
         .leftJoin(localUsers, eq(dreams.userId, localUsers.id))
         .where(
-          or(
-            like(dreams.title, `%${input.query}%`),
-            like(dreams.description, `%${input.query}%`)
+          and(
+            eq(dreams.isPublic, 1),
+            or(
+              like(dreams.title, `%${input.query}%`),
+              like(dreams.description, `%${input.query}%`)
+            )
           )
         )
         .orderBy(desc(dreams.createdAt))
         .limit(20);
+
+      return results.map((r) => ({
+        ...r,
+        userName: r.userName || "匿名用户",
+      }));
     }),
 
   // Get stats

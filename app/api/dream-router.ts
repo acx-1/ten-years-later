@@ -29,6 +29,7 @@ export const dreamRouter = createRouter({
         category: z.string().optional(),
         deadline: z.string().optional(),
         color: z.string().default("#1abc9c"),
+        isPublic: z.number().min(0).max(1).default(1),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -45,6 +46,7 @@ export const dreamRouter = createRouter({
         category,
         deadline,
         color: input.color?.trim() || "#1abc9c",
+        isPublic: input.isPublic,
       });
       return { id: Number(result[0].insertId), success: true };
     }),

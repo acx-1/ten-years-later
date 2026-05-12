@@ -229,6 +229,7 @@ export default function Dreams() {
                     category: newCategory,
                     deadline: newDeadline,
                     color: newColor,
+                    isPublic: newIsPublic ? 1 : 0,
                   });
                 }}
                 disabled={createDream.isPending || !newTitle.trim()}
