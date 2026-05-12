@@ -25,26 +25,28 @@ app.use("/api/trpc/*", async (c) => {
 app.all("/api/*", (c) => c.json({ error: "Not Found" }, 404));
 
 // Production: SPA fallback — serve index.html for frontend routes
-// Dev: handled by Vite's configureServer (spa-fallback plugin in vite.config.ts)
+// Dev: all non-API routes are excluded from Hono via devServer.exclude,
+//      so they go directly to Vite which handles SPA fallback.
 const indexPath = env.isProduction
   ? path.resolve(import.meta.dirname, "../dist/public/index.html")
   : path.resolve(import.meta.dirname, "../index.html");
 
 app.use("*", async (c, next) => {
+  // Dev: should not reach here (excluded by devServer.exclude), but as safety net
   if (!env.isProduction) {
-    // Dev: let Vite handle everything
     return next();
   }
 
+  // Production:
   const reqPath = new URL(c.req.url).pathname;
 
-  // Static files (have extension): use serveStatic
+  // Static files → serveStatic
   if (/\.[^/]+$/.test(reqPath)) {
     const { serveStatic } = await import("@hono/node-server/serve-static");
     return serveStatic({ root: "./dist/public" })(c, next);
   }
 
-  // SPA routes: return index.html
+  // SPA routes → index.html
   const accept = c.req.header("accept") ?? "";
   if (accept.includes("text/html") || accept === "*/*") {
     const content = fs.readFileSync(indexPath, "utf-8");
