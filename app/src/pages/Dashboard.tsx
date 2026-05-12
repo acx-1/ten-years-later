@@ -5,6 +5,7 @@ import gsap from "gsap";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { DreamCard } from "@/components/DreamCard";
+import { CommentList } from "@/components/CommentList";
 import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/providers/trpc";
 import { defaultDreams } from "@/data/content";
@@ -22,6 +23,7 @@ export default function Dashboard() {
   const { user, isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState<"overview" | "logs">("overview");
   const [newLogContent, setNewLogContent] = useState("");
+  const [selectedDreamId, setSelectedDreamId] = useState<number | null>(null);
   const pageRef = useRef<HTMLDivElement>(null);
 
   const { data: userDreams, refetch: refetchDreams } = trpc.dream.listByUser.useQuery(
@@ -33,6 +35,8 @@ export default function Dashboard() {
     undefined,
     { enabled: isAuthenticated && !!user }
   );
+
+  const utils = trpc.useUtils();
 
   const createLog = trpc.log.create.useMutation({
     onSuccess: () => {
@@ -54,6 +58,20 @@ export default function Dashboard() {
   const createDream = trpc.dream.create.useMutation({
     onSuccess: () => refetchDreams(),
   });
+
+  const toggleLike = trpc.like.toggle.useMutation({
+    onSuccess: () => {
+      refetchLogs();
+      utils.like.check.invalidate();
+    },
+  });
+
+  // Set default selected dream when dreams load
+  useEffect(() => {
+    if (userDreams && userDreams.length > 0 && selectedDreamId === null) {
+      setSelectedDreamId(userDreams[0].id);
+    }
+  }, [userDreams, selectedDreamId]);
 
   // Animation
   useEffect(() => {
@@ -85,7 +103,8 @@ export default function Dashboard() {
 
   const dreams = userDreams || [];
   const logs = (userLogs || []) as LogWithDreamTitle[];
-  const firstDreamId = dreams[0]?.id ?? null;
+
+  const selectedDream = dreams.find((d) => d.id === selectedDreamId);
 
   return (
     <div ref={pageRef} className="min-h-screen bg-gray-50">
@@ -223,40 +242,47 @@ export default function Dashboard() {
             {dreams.length > 0 && (
               <div className="bg-white rounded-lg p-5 shadow-sm animate-in">
                 <h3 className="text-sm font-semibold text-gray-700 mb-3">快速记录</h3>
-                {firstDreamId ? (
-                  <>
-                    <p className="text-xs text-gray-400 mb-2">
-                      记录到: <span className="text-[#1abc9c]">{dreams[0]?.title}</span>
-                      {dreams.length > 1 && (
-                        <Link to="/dreams" className="ml-2 text-[#1abc9c] hover:underline no-underline">更换</Link>
-                      )}
-                    </p>
-                    <div className="flex gap-3">
-                      <input
-                        type="text"
-                        value={newLogContent}
-                        onChange={(e) => setNewLogContent(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && newLogContent.trim() && firstDreamId) {
-                            createLog.mutate({ dreamId: firstDreamId, content: newLogContent });
-                          }
-                        }}
-                        placeholder="今天有什么进展？按回车快速发布"
-                        className="flex-1 h-10 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#1abc9c]"
-                      />
-                      <button
-                        onClick={() => {
-                          if (newLogContent.trim() && firstDreamId) {
-                            createLog.mutate({ dreamId: firstDreamId, content: newLogContent });
-                          }
-                        }}
-                        disabled={createLog.isPending || !newLogContent.trim()}
-                        className="px-4 py-2 bg-[#1abc9c] text-white text-sm rounded-lg hover:bg-[#16a085] cursor-pointer transition-colors disabled:opacity-50"
-                      >
-                        {createLog.isPending ? "..." : "发布"}
-                      </button>
-                    </div>
-                  </>
+                {/* Dream selector */}
+                <div className="mb-3">
+                  <label className="block text-xs text-gray-500 mb-1">选择梦想</label>
+                  <select
+                    value={selectedDreamId ?? ""}
+                    onChange={(e) => setSelectedDreamId(Number(e.target.value))}
+                    className="w-full h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#1abc9c] bg-white"
+                  >
+                    {dreams.map((dream) => (
+                      <option key={dream.id} value={dream.id}>
+                        {dream.title} ({dream.progress}%)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {selectedDreamId ? (
+                  <div className="flex gap-3">
+                    <input
+                      type="text"
+                      value={newLogContent}
+                      onChange={(e) => setNewLogContent(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && newLogContent.trim() && selectedDreamId) {
+                          createLog.mutate({ dreamId: selectedDreamId, content: newLogContent });
+                        }
+                      }}
+                      placeholder={`记录到 "${selectedDream?.title || "梦想"}"... 按回车快速发布`}
+                      className="flex-1 h-10 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#1abc9c]"
+                    />
+                    <button
+                      onClick={() => {
+                        if (newLogContent.trim() && selectedDreamId) {
+                          createLog.mutate({ dreamId: selectedDreamId, content: newLogContent });
+                        }
+                      }}
+                      disabled={createLog.isPending || !newLogContent.trim()}
+                      className="px-4 py-2 bg-[#1abc9c] text-white text-sm rounded-lg hover:bg-[#16a085] cursor-pointer transition-colors disabled:opacity-50"
+                    >
+                      {createLog.isPending ? "..." : "发布"}
+                    </button>
+                  </div>
                 ) : (
                   <p className="text-sm text-gray-400">
                     先<Link to="/dreams" className="text-[#1abc9c] no-underline">创建一个梦想</Link>才能记录日志
@@ -283,12 +309,7 @@ export default function Dashboard() {
                 </div>
                 <p className="text-gray-700 text-sm leading-relaxed">{log.content}</p>
                 <div className="mt-3 flex items-center gap-4">
-                  <button className="flex items-center gap-1 text-xs text-gray-400 hover:text-[#e74c3c] transition-colors cursor-pointer">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                    </svg>
-                    {log.likes}
-                  </button>
+                  <LikeButton logId={log.id} likes={log.likes} />
                   <button
                     onClick={() => {
                       if (confirm("确定要删除这条日志吗？")) {
@@ -303,6 +324,7 @@ export default function Dashboard() {
                     删除
                   </button>
                 </div>
+                <CommentList logId={log.id} />
               </div>
             ))}
 
@@ -317,5 +339,51 @@ export default function Dashboard() {
 
       <Footer />
     </div>
+  );
+}
+
+// Like button component with optimistic UI
+function LikeButton({ logId, likes }: { logId: number; likes: number }) {
+  const { isAuthenticated } = useAuth();
+  const { data: likeStatus } = trpc.like.check.useQuery(
+    { logId },
+    { enabled: isAuthenticated }
+  );
+  const utils = trpc.useUtils();
+
+  const toggleLike = trpc.like.toggle.useMutation({
+    onSuccess: () => {
+      utils.like.check.invalidate({ logId });
+      utils.log.listByUser.invalidate();
+    },
+  });
+
+  const isLiked = likeStatus?.liked ?? false;
+
+  return (
+    <button
+      onClick={() => {
+        if (!isAuthenticated) {
+          toast.error("请先登录");
+          return;
+        }
+        toggleLike.mutate({ logId });
+      }}
+      disabled={toggleLike.isPending}
+      className={`flex items-center gap-1 text-xs transition-colors cursor-pointer bg-transparent border-none ${
+        isLiked ? "text-[#e74c3c]" : "text-gray-400 hover:text-[#e74c3c]"
+      }`}
+    >
+      <svg
+        className="w-4 h-4"
+        fill={isLiked ? "currentColor" : "none"}
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={2}
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+      </svg>
+      {likes}
+    </button>
   );
 }

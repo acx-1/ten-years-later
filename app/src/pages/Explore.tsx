@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router";
+import { toast } from "sonner";
 import gsap from "gsap";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { CommentList } from "@/components/CommentList";
+import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/providers/trpc";
 
 const categories = ["全部", "创业", "旅行", "学习", "艺术", "健康", "科技", "生活"];
@@ -109,48 +112,12 @@ export default function Explore() {
                 ? searchList
                     .filter((d) => activeCategory === "全部" || d.category === activeCategory)
                     .map((dream) => (
-                      <div key={dream.id} className="bg-white rounded-lg p-5 shadow-sm hover:shadow-md transition-all duration-200 animate-in">
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className="w-9 h-9 rounded-full bg-[#1abc9c]/10 flex items-center justify-center text-[#1abc9c] font-bold text-xs">
-                            ?
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-gray-800 text-sm">匿名用户</h3>
-                            <span className="text-xs text-gray-400">{new Date(dream.createdAt).toLocaleDateString("zh-CN")}</span>
-                          </div>
-                          <span className="ml-auto px-2 py-0.5 bg-[#1abc9c]/10 text-[#1abc9c] text-xs rounded-full">{dream.category}</span>
-                        </div>
-                        <h4 className="font-medium text-gray-800">{dream.title}</h4>
-                        <p className="text-sm text-gray-500 mt-1">{dream.description}</p>
-                        <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full transition-all duration-1000"
-                            style={{ width: `${dream.progress}%`, backgroundColor: dream.color || "#1abc9c" }} />
-                        </div>
-                        <span className="text-xs text-gray-400 mt-1">{dream.progress}%</span>
-                      </div>
+                      <ExploreDreamCard key={dream.id} dream={dream} />
                     ))
                 : feedList
                     .filter((d) => activeCategory === "全部" || d.category === activeCategory)
                     .map((dream) => (
-                      <div key={dream.id} className="bg-white rounded-lg p-5 shadow-sm hover:shadow-md transition-all duration-200 animate-in">
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className="w-9 h-9 rounded-full bg-[#1abc9c]/10 flex items-center justify-center text-[#1abc9c] font-bold text-xs">
-                            {(dream.userName || "?")[0]}
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-gray-800 text-sm">{dream.userName || "匿名"}</h3>
-                            <span className="text-xs text-gray-400">{new Date(dream.createdAt).toLocaleDateString("zh-CN")}</span>
-                          </div>
-                          <span className="ml-auto px-2 py-0.5 bg-[#1abc9c]/10 text-[#1abc9c] text-xs rounded-full">{dream.category}</span>
-                        </div>
-                        <h4 className="font-medium text-gray-800">{dream.title}</h4>
-                        <p className="text-sm text-gray-500 mt-1">{dream.description}</p>
-                        <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full transition-all duration-1000"
-                            style={{ width: `${dream.progress}%`, backgroundColor: dream.color || "#1abc9c" }} />
-                        </div>
-                        <span className="text-xs text-gray-400 mt-1">{dream.progress}%</span>
-                      </div>
+                      <ExploreDreamCard key={dream.id} dream={dream} />
                     ))}
               {feedList.length === 0 && !isSearching && (
                 <p className="text-gray-400 text-sm text-center py-8">暂无数据</p>
@@ -166,27 +133,7 @@ export default function Explore() {
             <h2 className="text-lg font-semibold text-gray-800 mb-4 animate-in">梦想动态</h2>
             <div className="space-y-4">
               {(recentLogs || []).map((log) => (
-                <div key={log.id} className="bg-white rounded-lg p-5 shadow-sm hover:shadow-md transition-all duration-200 animate-in">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-8 h-8 rounded-full bg-[#1abc9c]/10 flex items-center justify-center text-[#1abc9c] text-xs font-bold">
-                      {(log.userName || "?")[0]}
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-800 text-sm">{log.userName || "匿名"}</h3>
-                      <span className="text-xs text-gray-400">{new Date(log.createdAt).toLocaleDateString("zh-CN")}</span>
-                    </div>
-                    <span className="ml-auto px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">{log.dreamTitle}</span>
-                  </div>
-                  <p className="text-gray-700 text-sm leading-relaxed">{log.content}</p>
-                  <div className="mt-3 flex items-center gap-4">
-                    <span className="flex items-center gap-1 text-xs text-gray-400">
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                      </svg>
-                      {log.likes}
-                    </span>
-                  </div>
-                </div>
+                <ExploreLogCard key={log.id} log={log} />
               ))}
               {(!recentLogs || recentLogs.length === 0) && (
                 <p className="text-gray-400 text-sm text-center py-8">暂无动态</p>
@@ -198,5 +145,141 @@ export default function Explore() {
 
       <div className="mt-12"><Footer /></div>
     </div>
+  );
+}
+
+// Dream card with follow button
+function ExploreDreamCard({ dream }: { dream: { id: number; title: string; description: string | null; category: string | null; progress: number; color: string | null; deadline: string | null; createdAt: Date; userName: string; userId?: number } }) {
+  return (
+    <div className="bg-white rounded-lg p-5 shadow-sm hover:shadow-md transition-all duration-200 animate-in">
+      <div className="flex items-center gap-3 mb-2">
+        <div className="w-9 h-9 rounded-full bg-[#1abc9c]/10 flex items-center justify-center text-[#1abc9c] font-bold text-xs">
+          {(dream.userName || "?")[0]}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-gray-800 text-sm truncate">{dream.userName || "匿名"}</h3>
+          <span className="text-xs text-gray-400">{new Date(dream.createdAt).toLocaleDateString("zh-CN")}</span>
+        </div>
+        {dream.userId && <FollowButton userId={dream.userId} />}
+        <span className="px-2 py-0.5 bg-[#1abc9c]/10 text-[#1abc9c] text-xs rounded-full flex-shrink-0">{dream.category}</span>
+      </div>
+      <h4 className="font-medium text-gray-800">{dream.title}</h4>
+      <p className="text-sm text-gray-500 mt-1">{dream.description}</p>
+      <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div className="h-full rounded-full transition-all duration-1000"
+          style={{ width: `${dream.progress}%`, backgroundColor: dream.color || "#1abc9c" }} />
+      </div>
+      <span className="text-xs text-gray-400 mt-1">{dream.progress}%</span>
+    </div>
+  );
+}
+
+// Log card with follow button
+function ExploreLogCard({ log }: { log: { id: number; dreamId: number; userId: number; content: string; likes: number; createdAt: Date; userName: string; dreamTitle: string } }) {
+  return (
+    <div className="bg-white rounded-lg p-5 shadow-sm hover:shadow-md transition-all duration-200 animate-in">
+      <div className="flex items-center gap-3 mb-2">
+        <div className="w-8 h-8 rounded-full bg-[#1abc9c]/10 flex items-center justify-center text-[#1abc9c] text-xs font-bold">
+          {(log.userName || "?")[0]}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-gray-800 text-sm">{log.userName || "匿名"}</h3>
+          <span className="text-xs text-gray-400">{new Date(log.createdAt).toLocaleDateString("zh-CN")}</span>
+        </div>
+        <FollowButton userId={log.userId} />
+        <span className="ml-2 px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">{log.dreamTitle}</span>
+      </div>
+      <p className="text-gray-700 text-sm leading-relaxed">{log.content}</p>
+      <div className="mt-3 flex items-center gap-4">
+        <LikeButton logId={log.id} likes={log.likes} />
+      </div>
+      <CommentList logId={log.id} />
+    </div>
+  );
+}
+
+// Follow button component
+function FollowButton({ userId }: { userId: number }) {
+  const { isAuthenticated, user } = useAuth();
+  const utils = trpc.useUtils();
+  const isSelf = user?.id === userId;
+
+  const { data: followStatus } = trpc.follow.check.useQuery(
+    { userId },
+    { enabled: isAuthenticated && !isSelf }
+  );
+
+  const toggleFollow = trpc.follow.toggle.useMutation({
+    onSuccess: () => {
+      utils.follow.check.invalidate({ userId });
+      utils.follow.followersCount.invalidate({ userId });
+      utils.follow.followingCount.invalidate({ userId: user?.id ?? 0 });
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  if (!isAuthenticated || isSelf) return null;
+
+  const isFollowing = followStatus?.following ?? false;
+
+  return (
+    <button
+      onClick={() => toggleFollow.mutate({ userId })}
+      disabled={toggleFollow.isPending}
+      className={`px-3 py-1 text-xs rounded-full cursor-pointer transition-colors border-none flex-shrink-0 ${
+        isFollowing
+          ? "bg-gray-100 text-gray-600 hover:bg-gray-200"
+          : "bg-[#1abc9c] text-white hover:bg-[#16a085]"
+      }`}
+    >
+      {toggleFollow.isPending ? "..." : isFollowing ? "已关注" : "+ 关注"}
+    </button>
+  );
+}
+
+// Like button component
+function LikeButton({ logId, likes }: { logId: number; likes: number }) {
+  const { isAuthenticated } = useAuth();
+  const utils = trpc.useUtils();
+
+  const { data: likeStatus } = trpc.like.check.useQuery(
+    { logId },
+    { enabled: isAuthenticated }
+  );
+
+  const toggleLike = trpc.like.toggle.useMutation({
+    onSuccess: () => {
+      utils.like.check.invalidate({ logId });
+      utils.explore.recentLogs.invalidate();
+    },
+  });
+
+  const isLiked = likeStatus?.liked ?? false;
+
+  return (
+    <button
+      onClick={() => {
+        if (!isAuthenticated) {
+          toast.error("请先登录");
+          return;
+        }
+        toggleLike.mutate({ logId });
+      }}
+      disabled={toggleLike.isPending}
+      className={`flex items-center gap-1 text-xs transition-colors cursor-pointer bg-transparent border-none ${
+        isLiked ? "text-[#e74c3c]" : "text-gray-400 hover:text-[#e74c3c]"
+      }`}
+    >
+      <svg
+        className="w-4 h-4"
+        fill={isLiked ? "currentColor" : "none"}
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={2}
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+      </svg>
+      {likes}
+    </button>
   );
 }

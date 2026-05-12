@@ -58,6 +58,7 @@ export const dreamRouter = createRouter({
         category: z.string().optional(),
         deadline: z.string().optional(),
         color: z.string().optional(),
+        isPublic: z.number().min(0).max(1).optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -79,6 +80,7 @@ export const dreamRouter = createRouter({
       if (input.category !== undefined) updateData.category = input.category?.trim() || null;
       if (input.deadline !== undefined) updateData.deadline = input.deadline?.trim() || null;
       if (input.color !== undefined) updateData.color = input.color;
+      if (input.isPublic !== undefined) updateData.isPublic = input.isPublic;
 
       await db.update(dreams).set(updateData).where(eq(dreams.id, input.id));
       return { success: true };

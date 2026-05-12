@@ -1,16 +1,18 @@
 import {
   mysqlTable,
-  bigint,
+  serial,
   varchar,
   text,
   timestamp,
+  bigint,
   int,
   mysqlEnum,
+  uniqueIndex,
 } from "drizzle-orm/mysql-core";
 
 // OAuth users (Kimi login)
 export const users = mysqlTable("users", {
-  id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
+  id: serial("id").primaryKey(),
   unionId: varchar("unionId", { length: 255 }).notNull().unique(),
   name: varchar("name", { length: 255 }),
   email: varchar("email", { length: 320 }),
@@ -26,7 +28,7 @@ export type InsertUser = typeof users.$inferInsert;
 
 // Local users (username/password login)
 export const localUsers = mysqlTable("local_users", {
-  id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
+  id: serial("id").primaryKey(),
   username: varchar("username", { length: 50 }).notNull().unique(),
   displayName: varchar("display_name", { length: 255 }),
   passwordHash: varchar("password_hash", { length: 255 }).notNull(),
@@ -42,7 +44,7 @@ export type InsertLocalUser = typeof localUsers.$inferInsert;
 
 // Dreams table
 export const dreams = mysqlTable("dreams", {
-  id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
+  id: serial("id").primaryKey(),
   userId: bigint("user_id", { mode: "number", unsigned: true }).notNull(),
   userType: mysqlEnum("user_type", ["oauth", "local"]).default("local").notNull(),
   title: varchar("title", { length: 255 }).notNull(),
@@ -60,7 +62,7 @@ export type Dream = typeof dreams.$inferSelect;
 
 // Dream logs (journal entries)
 export const dreamLogs = mysqlTable("dream_logs", {
-  id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
+  id: serial("id").primaryKey(),
   dreamId: bigint("dream_id", { mode: "number", unsigned: true }).notNull(),
   userId: bigint("user_id", { mode: "number", unsigned: true }).notNull(),
   userType: mysqlEnum("user_type", ["oauth", "local"]).default("local").notNull(),
@@ -70,3 +72,39 @@ export const dreamLogs = mysqlTable("dream_logs", {
 });
 
 export type DreamLog = typeof dreamLogs.$inferSelect;
+
+// User likes on logs (prevents duplicate likes)
+export const userLikes = mysqlTable("user_likes", {
+  id: serial("id").primaryKey(),
+  userId: bigint("user_id", { mode: "number", unsigned: true }).notNull(),
+  logId: bigint("log_id", { mode: "number", unsigned: true }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("idx_user_likes_unique").on(table.userId, table.logId),
+]);
+
+export type UserLike = typeof userLikes.$inferSelect;
+
+// Follows (user follow relationships)
+export const follows = mysqlTable("follows", {
+  id: serial("id").primaryKey(),
+  followerId: bigint("follower_id", { mode: "number", unsigned: true }).notNull(),
+  followingId: bigint("following_id", { mode: "number", unsigned: true }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("idx_follows_unique").on(table.followerId, table.followingId),
+]);
+
+export type Follow = typeof follows.$inferSelect;
+
+// Comments on logs
+export const comments = mysqlTable("comments", {
+  id: serial("id").primaryKey(),
+  logId: bigint("log_id", { mode: "number", unsigned: true }).notNull(),
+  userId: bigint("user_id", { mode: "number", unsigned: true }).notNull(),
+  userType: mysqlEnum("user_type", ["oauth", "local"]).default("local").notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type Comment = typeof comments.$inferSelect;

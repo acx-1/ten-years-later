@@ -8,6 +8,7 @@ const navItems = [
   { path: "/dashboard", label: "我的", auth: true },
   { path: "/explore", label: "探索一下" },
   { path: "/dreams", label: "梦想", auth: true },
+  { path: "/profile", label: "资料", auth: true },
   { path: "/about", label: "关于我们" },
 ];
 

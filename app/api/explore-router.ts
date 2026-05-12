@@ -7,6 +7,7 @@ import { dreams, dreamLogs, localUsers } from "@db/schema";
 // Shared fields to select from dreams
 const dreamFields = {
   id: dreams.id,
+  userId: dreams.userId,
   title: dreams.title,
   description: dreams.description,
   category: dreams.category,

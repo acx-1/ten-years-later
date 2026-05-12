@@ -21,6 +21,7 @@ export default function Dreams() {
     return d.toISOString().slice(0, 7);
   });
   const [newColor, setNewColor] = useState("#1abc9c");
+  const [newIsPublic, setNewIsPublic] = useState(true);
   const [editingDream, setEditingDream] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editDesc, setEditDesc] = useState("");
@@ -66,6 +67,16 @@ export default function Dreams() {
       toast.success("梦想已删除");
       refetch();
       setSelectedDream(null);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const togglePublic = trpc.dream.update.useMutation({
+    onSuccess: (data, variables) => {
+      const dream = dreams.find((d) => d.id === variables.id);
+      const isPublic = variables.isPublic === 1;
+      toast.success(`梦想已设为${isPublic ? "公开" : "私密"}`);
+      refetch();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -187,6 +198,20 @@ export default function Dreams() {
                   ))}
                 </div>
               </div>
+              <div className="md:col-span-2 flex items-center gap-3">
+                <label className="text-sm text-gray-600">公开可见</label>
+                <button
+                  onClick={() => setNewIsPublic(!newIsPublic)}
+                  className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${newIsPublic ? "bg-[#1abc9c]" : "bg-gray-300"}`}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${newIsPublic ? "translate-x-5" : ""}`}
+                  />
+                </button>
+                <span className="text-xs text-gray-400">
+                  {newIsPublic ? "所有人可以看到" : "仅自己可见"}
+                </span>
+              </div>
             </div>
             <div className="mt-4 flex justify-end gap-3">
               <button
@@ -229,9 +254,12 @@ export default function Dreams() {
                     onClick={() => setSelectedDream(selectedDream === dream.id ? null : dream.id)}
                   >
                     {selectedDream === dream.id && (
-                      <div className="mt-4 pt-4 border-t border-gray-100">
+                      <div
+                        className="mt-4 pt-4 border-t border-gray-100"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         {/* Actions */}
-                        <div className="flex gap-2 mb-4">
+                        <div className="flex gap-2 mb-4 flex-wrap">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -251,6 +279,36 @@ export default function Dreams() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
+                              const next = dream.isPublic === 1 ? 0 : 1;
+                              togglePublic.mutate({ id: dream.id, isPublic: next });
+                            }}
+                            className={`flex items-center gap-1 px-3 py-1.5 text-xs rounded-full cursor-pointer transition-colors border-none ${
+                              dream.isPublic === 1
+                                ? "bg-[#1abc9c]/10 text-[#1abc9c] hover:bg-[#1abc9c]/20"
+                                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                            }`}
+                          >
+                            {dream.isPublic === 1 ? (
+                              <>
+                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                公开
+                              </>
+                            ) : (
+                              <>
+                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a10.05 10.05 0 011.574-2.9m3.1-3.1C8.355 5.387 10.153 5 12 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.574 2.9M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18" />
+                                </svg>
+                                私密
+                              </>
+                            )}
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
                               if (confirm("确定要删除这个梦想吗？关联的日志也会被删除。")) {
                                 deleteDream.mutate({ id: dream.id });
                               }
@@ -266,7 +324,10 @@ export default function Dreams() {
 
                         {/* Edit Form */}
                         {editingDream === dream.id && (
-                          <div className="mb-4 p-4 bg-gray-50 rounded-lg space-y-3">
+                          <div
+                            className="mb-4 p-4 bg-gray-50 rounded-lg space-y-3"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <input
                               type="text"
                               value={editTitle}
@@ -384,6 +445,14 @@ export default function Dreams() {
                   <span className="text-sm text-gray-600">进行中</span>
                   <span className="text-lg font-bold text-[#f1c40f]">{dreams.filter((d) => d.progress < 100).length}</span>
                 </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">公开</span>
+                  <span className="text-lg font-bold text-[#1abc9c]">{dreams.filter((d) => d.isPublic === 1).length}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">私密</span>
+                  <span className="text-lg font-bold text-gray-500">{dreams.filter((d) => d.isPublic !== 1).length}</span>
+                </div>
               </div>
             </div>
 
@@ -401,6 +470,12 @@ export default function Dreams() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                   探索他人梦想
+                </Link>
+                <Link to="/profile" className="flex items-center gap-2 text-sm text-gray-600 hover:text-[#1abc9c] transition-colors no-underline">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  个人资料
                 </Link>
               </div>
             </div>
