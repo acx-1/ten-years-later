@@ -1,0 +1,243 @@
+import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router";
+import gsap from "gsap";
+import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
+import { useAuth } from "@/hooks/useAuth";
+import { trpc } from "@/providers/trpc";
+
+export default function Dreams() {
+  const { user, isAuthenticated } = useAuth();
+  const [selectedDream, setSelectedDream] = useState<number | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newDesc, setNewDesc] = useState("");
+  const [newCategory, setNewCategory] = useState("学习");
+  const [newDeadline, setNewDeadline] = useState("");
+  const [newColor, setNewColor] = useState("#1abc9c");
+  const pageRef = useRef<HTMLDivElement>(null);
+
+  const { data: userDreams, refetch } = trpc.dream.listByUser.useQuery(
+    { userId: user?.id ?? 0, userType: "local" },
+    { enabled: isAuthenticated && !!user }
+  );
+
+  const createDream = trpc.dream.create.useMutation({
+    onSuccess: () => { refetch(); setShowAddForm(false); setNewTitle(""); setNewDesc(""); },
+  });
+
+  const updateProgress = trpc.dream.updateProgress.useMutation({
+    onSuccess: () => refetch(),
+  });
+
+  useEffect(() => {
+    if (pageRef.current) {
+      gsap.fromTo(pageRef.current.querySelectorAll(".animate-in"),
+        { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.06, ease: "power2.out" });
+    }
+  }, []);
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center pt-14">
+          <div className="text-center">
+            <p className="text-gray-500 mb-4">请先登录后管理你的梦想</p>
+            <Link to="/login" className="px-5 py-2 bg-[#1abc9c] text-white rounded-lg no-underline hover:bg-[#16a085]">
+              去登录
+            </Link>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  const dreams = userDreams || [];
+  const avgProgress = dreams.length > 0 ? Math.round(dreams.reduce((a, d) => a + d.progress, 0) / dreams.length) : 0;
+
+  return (
+    <div ref={pageRef} className="min-h-screen bg-gray-50">
+      <Navbar />
+
+      <div className="pt-14">
+        <div className="relative h-48 bg-gradient-to-r from-[#1abc9c] to-[#2ecc71] overflow-hidden">
+          <div className="absolute inset-0 opacity-15">
+            <img src="/images/hero-dreams.jpg" alt="" className="w-full h-full object-cover" />
+          </div>
+          <div className="relative z-10 max-w-[1200px] mx-auto px-6 h-full flex items-center justify-between">
+            <div className="animate-in">
+              <h1 className="text-3xl font-bold text-white mb-2">我的梦想</h1>
+              <p className="text-white/80">记录每一个值得追寻的目标</p>
+            </div>
+            <button onClick={() => setShowAddForm(!showAddForm)}
+              className="px-5 py-2.5 bg-white text-[#1abc9c] rounded-lg font-medium text-sm hover:bg-white/90 transition-colors shadow-lg cursor-pointer animate-in">
+              {showAddForm ? "取消" : "+ 添加梦想"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {showAddForm && (
+        <div className="max-w-[1200px] mx-auto px-6 mt-4 animate-in">
+          <div className="bg-white rounded-lg p-6 shadow-md">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">新梦想</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">梦想名称 *</label>
+                <input type="text" value={newTitle} onChange={(e) => setNewTitle(e.target.value)}
+                  placeholder="给梦想起个名字" className="w-full h-10 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#1abc9c]" />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">分类</label>
+                <select value={newCategory} onChange={(e) => setNewCategory(e.target.value)}
+                  className="w-full h-10 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#1abc9c] bg-white">
+                  {["创业", "旅行", "学习", "艺术", "健康", "科技", "生活"].map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm text-gray-600 mb-1">描述</label>
+                <textarea value={newDesc} onChange={(e) => setNewDesc(e.target.value)}
+                  placeholder="描述一下这个梦想..." rows={3} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#1abc9c] resize-none" />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">预期实现时间</label>
+                <input type="month" value={newDeadline} onChange={(e) => setNewDeadline(e.target.value)}
+                  className="w-full h-10 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#1abc9c]" />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">颜色</label>
+                <div className="flex gap-2">
+                  {["#1abc9c", "#3498db", "#e74c3c", "#f1c40f", "#9b59b6", "#2ecc71"].map((c) => (
+                    <button key={c} onClick={() => setNewColor(c)}
+                      className={`w-8 h-8 rounded-full transition-transform ${newColor === c ? "scale-125 ring-2 ring-gray-300" : ""}`}
+                      style={{ backgroundColor: c }} />
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end gap-3">
+              <button onClick={() => setShowAddForm(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors cursor-pointer bg-transparent">取消</button>
+              <button onClick={() => {
+                if (!newTitle.trim() || !user) return;
+                createDream.mutate({ userId: user.id, userType: "local", title: newTitle, description: newDesc, category: newCategory, deadline: newDeadline, color: newColor });
+              }} disabled={createDream.isPending}
+                className="px-5 py-2 bg-[#1abc9c] text-white text-sm rounded-lg hover:bg-[#16a085] transition-colors cursor-pointer disabled:opacity-50">
+                {createDream.isPending ? "创建中..." : "创建梦想"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="max-w-[1200px] mx-auto px-6 mt-8 pb-12">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4 animate-in">全部梦想 ({dreams.length})</h2>
+            <div className="space-y-4">
+              {dreams.map((dream) => (
+                <div key={dream.id}
+                  onClick={() => setSelectedDream(selectedDream === dream.id ? null : dream.id)}
+                  className="bg-white rounded-lg p-5 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer animate-in">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3">
+                      <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
+                        style={{ backgroundColor: dream.color || "#1abc9c" }}>
+                        {dream.title[0]}
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-800">{dream.title}</h3>
+                        <p className="text-sm text-gray-500 mt-0.5">{dream.description}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">{dream.category}</span>
+                          <span className="text-xs text-gray-400">截止: {dream.deadline}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-lg font-bold" style={{ color: dream.color || "#1abc9c" }}>{dream.progress}%</span>
+                  </div>
+                  <div className="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-1000"
+                      style={{ width: `${dream.progress}%`, backgroundColor: dream.color || "#1abc9c" }} />
+                  </div>
+
+                  {selectedDream === dream.id && (
+                    <div className="mt-4 pt-4 border-t border-gray-100 animate-in">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-3">更新进度</h4>
+                      <div className="flex gap-2">
+                        {[0, 25, 50, 75, 100].map((p) => (
+                          <button key={p} onClick={(e) => { e.stopPropagation(); updateProgress.mutate({ id: dream.id, progress: p }); }}
+                            className={`px-3 py-1 text-xs rounded-full cursor-pointer transition-colors ${
+                              dream.progress >= p ? "bg-[#1abc9c] text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                            }`}>
+                            {p}%
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {dreams.length === 0 && (
+                <div className="text-center py-12">
+                  <p className="text-gray-400 mb-4">还没有梦想，去添加一个吧</p>
+                  <button onClick={() => setShowAddForm(true)}
+                    className="px-5 py-2 bg-[#1abc9c] text-white rounded-lg cursor-pointer hover:bg-[#16a085]">
+                    添加梦想
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-lg p-5 shadow-sm animate-in">
+              <h3 className="font-semibold text-gray-800 mb-4">统计概览</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">总梦想数</span>
+                  <span className="text-lg font-bold text-[#1abc9c]">{dreams.length}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">平均进度</span>
+                  <span className="text-lg font-bold text-[#3498db]">{avgProgress}%</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">已完成</span>
+                  <span className="text-lg font-bold text-[#2ecc71]">{dreams.filter((d) => d.progress === 100).length}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">进行中</span>
+                  <span className="text-lg font-bold text-[#f1c40f]">{dreams.filter((d) => d.progress < 100).length}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg p-5 shadow-sm mt-4 animate-in">
+              <h3 className="font-semibold text-gray-800 mb-3">快捷入口</h3>
+              <div className="space-y-2">
+                <Link to="/dashboard" className="flex items-center gap-2 text-sm text-gray-600 hover:text-[#1abc9c] transition-colors no-underline">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  我的仪表盘
+                </Link>
+                <Link to="/explore" className="flex items-center gap-2 text-sm text-gray-600 hover:text-[#1abc9c] transition-colors no-underline">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  探索他人梦想
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <Footer />
+    </div>
+  );
+}
