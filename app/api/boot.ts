@@ -7,6 +7,8 @@ import { createContext } from "./context";
 import { env } from "./lib/env";
 import { createOAuthCallbackHandler } from "./kimi/auth";
 import { Paths } from "@contracts/constants";
+import fs from "fs";
+import path from "path";
 
 const app = new Hono<{ Bindings: HttpBindings }>();
 
@@ -22,12 +24,33 @@ app.use("/api/trpc/*", async (c) => {
 });
 app.all("/api/*", (c) => c.json({ error: "Not Found" }, 404));
 
+// SPA fallback: serve index.html for non-API, non-file routes
+const distPath = path.resolve(import.meta.dirname, "../dist/public");
+const indexPath = path.resolve(distPath, "index.html");
+
+app.use("*", async (c, next) => {
+  const reqPath = new URL(c.req.url).pathname;
+
+  // Static files (have extension): let serveStatic handle
+  if (/\.[^/]+$/.test(reqPath)) {
+    const { serveStatic } = await import("@hono/node-server/serve-static");
+    return serveStatic({ root: "./dist/public" })(c, next);
+  }
+
+  // SPA routes (no extension): return index.html
+  const accept = c.req.header("accept") ?? "";
+  if (accept.includes("text/html") || accept === "*/*") {
+    const content = fs.readFileSync(indexPath, "utf-8");
+    return c.html(content);
+  }
+
+  return c.json({ error: "Not Found" }, 404);
+});
+
 export default app;
 
 if (env.isProduction) {
   const { serve } = await import("@hono/node-server");
-  const { serveStaticFiles } = await import("./lib/vite");
-  serveStaticFiles(app);
 
   const port = parseInt(process.env.PORT || "3000");
   serve({ fetch: app.fetch, port }, () => {
