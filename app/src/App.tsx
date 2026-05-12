@@ -5,6 +5,7 @@ import Dashboard from "./pages/Dashboard";
 import Explore from "./pages/Explore";
 import Dreams from "./pages/Dreams";
 import About from "./pages/About";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 export default function App() {
@@ -16,6 +17,7 @@ export default function App() {
       <Route path="/explore" element={<Explore />} />
       <Route path="/dreams" element={<Dreams />} />
       <Route path="/about" element={<About />} />
+      <Route path="/profile" element={<Profile />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
